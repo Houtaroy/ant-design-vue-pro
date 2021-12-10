@@ -237,7 +237,8 @@ export default {
       rules: {
         // 规则验证
         name: [{ required: true, message: '请输入组织名称', trigger: 'blur' }],
-        code: [{ required: true, message: '请输入组织代码', trigger: 'blur' }]
+        code: [{ required: true, message: '请输入组织代码', trigger: 'blur' }],
+        parentId: [{ required: true, message: '请选择上级组织', trigger: 'change' }]
       },
       formOrganizationTreeData: [] // 表单的树形下拉数据
     };
