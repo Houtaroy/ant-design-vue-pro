@@ -87,6 +87,42 @@ export const asyncRouterMap = [
               title: '权限管理',
               icon: workplace
             }
+          },
+          {
+            path: '/system/application',
+            name: 'application',
+            component: () => import('@/views/system/application'),
+            meta: {
+              title: '应用管理',
+              icon: workplace
+            }
+          },
+          {
+            path: '/system/registeredClients',
+            name: 'registeredClients',
+            component: () => import('@/views/system/registeredClients'),
+            meta: {
+              title: '客户端管理',
+              icon: workplace
+            }
+          },
+          {
+            path: '/system/resources',
+            name: 'resources',
+            component: () => import('@/views/system/resources'),
+            meta: {
+              title: '资源管理',
+              icon: workplace
+            }
+          },
+          {
+            path: '/system/Interface',
+            name: 'Interface',
+            component: () => import('@/views/system/Interface'),
+            meta: {
+              title: '接口管理',
+              icon: workplace
+            }
           }
         ]
       },

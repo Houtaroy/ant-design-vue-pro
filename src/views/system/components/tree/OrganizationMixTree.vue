@@ -27,6 +27,7 @@
       >
         <template slot="title" slot-scope="{ name }">
           <span
+          :title="name"
             v-html="
               name.replace(
                 new RegExp(mixTreeSearch, 'g'),
@@ -205,6 +206,7 @@ export default {
               this.expandedKeys.push(parentId);
               // 如果还有父级则拿父级ID重新遍历 如果没有父级说明已经在部门的一级列表 拿organization.id继续向上查找
               if (node.parent) {
+                this.expandedKeys.push(node.parent.id);
                 this.getParentKey(node.parent.id, this.treeData);
               } else {
                 this.getParentKey(node.organization.id, this.treeData);
@@ -273,6 +275,7 @@ export default {
   width: 100%;
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 167px);
   .mixTreeSearch {
     width: 100%;
     height: 46px;
@@ -280,7 +283,7 @@ export default {
     padding: 5px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-around;
     font-size: 18px;
     cursor: pointer;
   }
@@ -293,5 +296,23 @@ export default {
   .mixTreeContent::-webkit-scrollbar {
     display: none;
   }
+  .mixTreeContent /deep/ .ant-tree li .ant-tree-node-content-wrapper {
+    max-width: 240px;
+    display: inline-block;
+    height: 24px;
+    margin: 0;
+    padding: 0 5px;
+    color: rgba(0, 0, 0, 0.65);
+    line-height: 24px;
+    text-decoration: none;
+    vertical-align: top;
+    border-radius: 2px;
+    cursor: pointer;
+    -webkit-transition: all 0.3s;
+    transition: all 0.3s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 }
 </style>

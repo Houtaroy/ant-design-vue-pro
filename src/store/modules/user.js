@@ -1,6 +1,6 @@
 import storage from 'store';
 import { loginByUsername, logout } from '@/api/auth';
-import { userInfo } from '@/api';
+// import { userInfo } from '@/api';
 import { ACCESS_TOKEN } from '@/store/mutation-types';
 import { welcome } from '@/utils/util';
 
@@ -57,31 +57,32 @@ const user = {
 
     // 获取用户信息
     GetInfo({ commit }) {
-      return new Promise((resolve, reject) => {
-        userInfo()
-          .then(response => {
-            if (response.code === 200 && response.data) {
-              const result = response.data;
-              if (result.roles && result.roles.length > 0 && result.permissions && result.permissions.length > 0) {
-                commit('SET_ROLES', result.roles);
-                commit('SET_PERMISSIONS', result.permissions);
-                commit('SET_INFO', result);
-              } else {
-                reject(new Error('用户角色和权限不能为空'));
-              }
+      commit('SET_NAME', { name: '111', welcome: welcome() });
+      // return new Promise((resolve, reject) => {
+      //   userInfo()
+      //     .then(response => {
+      //       if (response.code === 200 && response.data) {
+      //         const result = response.data;
+      //         if (result.roles && result.roles.length > 0 && result.permissions && result.permissions.length > 0) {
+      //           commit('SET_ROLES', result.roles);
+      //           commit('SET_PERMISSIONS', result.permissions);
+      //           commit('SET_INFO', result);
+      //         } else {
+      //           reject(new Error('用户角色和权限不能为空'));
+      //         }
 
-              commit('SET_NAME', { name: result.name, welcome: welcome() });
-              commit('SET_AVATAR', result.avatar);
+      //         commit('SET_NAME', { name: result.name, welcome: welcome() });
+      //         commit('SET_AVATAR', result.avatar);
 
-              resolve(result);
-            } else {
-              reject(new Error('获取用户信息失败'));
-            }
-          })
-          .catch(error => {
-            reject(error);
-          });
-      });
+      //         resolve(result);
+      //       } else {
+      //         reject(new Error('获取用户信息失败'));
+      //       }
+      //     })
+      //     .catch(error => {
+      //       reject(error);
+      //     });
+      // });
     },
 
     // 登出

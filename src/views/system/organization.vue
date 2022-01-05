@@ -47,8 +47,8 @@
                 </template>
                 <a-col :md="8" :sm="24" style="display:flex;justify-content: flex-end">
                   <span>
-                    <a-button style="margin-left: 30px" @click="() => (this.searchParameters = {})">重置</a-button>
-                    <a-button style="margin-left: 8px" type="primary" @click="() => this.searchOrganizationTableData()">查询</a-button>
+                    <a-button type="primary" @click="() => this.searchOrganizationTableData()">查询</a-button>
+                    <a-button style="margin-left: 8px" @click="handleReset()">重置</a-button>
                     <a @click="() => (this.advanced = !this.advanced)" style="margin-left: 8px">
                       {{ advanced ? '收起' : '展开' }}
                       <a-icon :type="advanced ? 'up' : 'down'" />
@@ -74,6 +74,7 @@
               :data-source="organizationTableData"
               :pagination="false"
               size="middle"
+              :rowClassName="rowClassName"
               :rowKey="
                 (record, index) => {
                   return index;
@@ -82,13 +83,21 @@
               bordered
             >
               <template slot="action" slot-scope="text, record">
+                <a-popconfirm
+                  slot="action"
+                  title="此操作将停用该条数据，是否继续?"
+                  ok-text="是"
+                  cancel-text="否"
+                  @confirm="handleIsEnable(record)"
+                >
+                  <a href="javascript:;" v-if="record.isEnable == 1" :class="{ deactivate: record.isEnable == 1 }">停用</a>
+                </a-popconfirm>
                 <a
                   slot="action"
                   href="javascript:;"
                   @click="handleIsEnable(record)"
-                  :class="{ deactivate: record.isEnable == 1, enable: record.isEnable == 0 }"
-                  >{{ record.isEnable == 1 ? '停用' : '启用' }}</a
-                >
+                  v-if="record.isEnable == 0"
+                  :class="{ enable: record.isEnable == 0 }">启用</a>
                 <a slot="action" href="javascript:;" style="margin-left:5px" @click="handleEdit(record)">编辑</a>
                 <a-popconfirm
                   slot="action"
@@ -109,6 +118,7 @@
             show-quick-jumper
             :page-size-options="pageSizeOptions"
             :total="organizationTableTotal"
+            :show-total="total => `共 ${organizationTableTotal} 条`"
             show-size-changer
             :page-size="pageObject.pageSize"
             @change="handlePageNumberChange"
@@ -131,10 +141,10 @@
             :wrapper-col="wrapperCol"
           >
             <a-form-model-item ref="name" label="组织名称" prop="name">
-              <a-input v-model="form.name" placeholder="请输入组织名称" />
+              <a-input v-model.trim="form.name" placeholder="请输入组织名称" />
             </a-form-model-item>
             <a-form-model-item ref="code" label="组织代码" prop="code">
-              <a-input v-model="form.code" placeholder="请输入组织代码" />
+              <a-input v-model.trim="form.code" placeholder="请输入组织代码" />
             </a-form-model-item>
             <a-form-model-item label="上级组织" prop="parentId">
               <a-tree-select
@@ -162,7 +172,7 @@
               </a-radio-group>
             </a-form-model-item>
             <a-form-model-item label="备注">
-              <a-input v-model="form.description" type="textarea" placeholder="请输入备注" />
+              <a-input v-model.trim="form.description" type="textarea" placeholder="请输入备注" :maxLength="500" />
             </a-form-model-item>
           </a-form-model>
         </a-modal>
@@ -185,19 +195,27 @@ import organizationTreeData from './components/tree/organizationTree';
 const columns = [
   {
     title: '名称',
-    dataIndex: 'name'
+    dataIndex: 'name',
+    width: '20%',
+    ellipsis: true
   },
   {
     title: '创建时间',
-    dataIndex: 'createTime'
+    dataIndex: 'createTime',
+    width: '20%',
+    ellipsis: true
   },
   {
     title: '代码',
-    dataIndex: 'code'
+    dataIndex: 'code',
+    width: '20%',
+    ellipsis: true
   },
   {
     title: '组织描述',
-    dataIndex: 'description'
+    dataIndex: 'description',
+    width: '20%',
+    ellipsis: true
   },
   {
     title: '操作',
@@ -223,7 +241,7 @@ export default {
         pageSize: this.$store.state.user.defaultPaginationPagesize // 一页展示多少条数据
       },
       organizationTableTotal: 0, // 表格数据总数
-      labelCol: { span: 4 },
+      labelCol: { span: 7 },
       wrapperCol: { span: 14 },
       form: {
         // 表单数据
@@ -236,8 +254,14 @@ export default {
       },
       rules: {
         // 规则验证
-        name: [{ required: true, message: '请输入组织名称', trigger: 'blur' }],
-        code: [{ required: true, message: '请输入组织代码', trigger: 'blur' }]
+        name: [
+          { required: true, message: '请输入组织名称', trigger: 'blur' },
+          { max: 50, message: '组织名称长度不能大于50', trigger: 'blur' }
+        ],
+        code: [
+          { required: true, message: '请输入组织代码', trigger: 'blur' },
+          { max: 50, message: '组织代码长度不能大于50', trigger: 'blur' }
+        ]
       },
       formOrganizationTreeData: [] // 表单的树形下拉数据
     };
@@ -257,8 +281,8 @@ export default {
         this.organizationTableTotal === this.getExceptCurrentPageTableTotalData &&
         this.organizationTableTotal !== 0
       ) {
-        this.pageObject.pageNumber = Number(this.currentPage) - 1;
         this.currentPage -= 1;
+        this.pageObject.pageNumber = Number(this.currentPage) - 1;
         this.getOrganizationTableData(this.pageObject, this.searchParameters);
       }
     }
@@ -290,11 +314,11 @@ export default {
      */
     selectOrganization(selectOrganizationData) {
       if (selectOrganizationData.length > 1) {
-         this.searchParameters.searchParentIds = selectOrganizationData;
-         this.searchParameters.searchParentId = undefined;
+        this.searchParameters.searchParentIds = selectOrganizationData;
+        this.searchParameters.searchParentId = undefined;
       } else {
-         this.searchParameters.searchParentIds = undefined;
-         this.searchParameters.searchParentId = selectOrganizationData[0];
+        this.searchParameters.searchParentIds = undefined;
+        this.searchParameters.searchParentId = selectOrganizationData[0];
       }
       this.searchOrganizationTableData();
     },
@@ -412,6 +436,7 @@ export default {
     clearFormData() {
       this.$refs.organizationRuleForm.resetFields();
       this.form = this.$options.data.call(this).form;
+      this.$refs.organizationTree.getTreeData();
     },
 
     /**
@@ -424,7 +449,24 @@ export default {
           this.form = Object.assign({}, this.form, res.data);
           this.form.parentId = this.form.parent ? this.form.parent.id : undefined;
           this.form.isEnable = String(this.form.isEnable);
+           this.disableSelectIdData(organizationTableRowData.id, this.formOrganizationTreeData);
           this.modleVisible = true;
+        }
+      });
+    },
+
+    /**
+     * @description: 编辑用户时禁用自己
+     * @param {string} selectId 选中ID
+     * @param {array} formOrganizationTreeData 组织下拉树
+     */
+    disableSelectIdData(selectId, formOrganizationTreeData) {
+      formOrganizationTreeData.forEach(item => {
+        if (item.id === selectId) {
+           item.disabled = true;
+        }
+        if (item.children) {
+          this.disableSelectIdData(selectId, item.children);
         }
       });
     },
@@ -482,7 +524,7 @@ export default {
       if (organizationTableRowData.isEnable === 1) {
         disableOrganizationById({ id: organizationTableRowData.id }).then(res => {
           if (res.code === 200) {
-            this.$message.success(res.message);
+            this.$message.success('停用成功');
             this.getOrganizationTableData(this.pageObject, this.searchParameters);
             this.$refs.organizationTree.getTreeData();
           }
@@ -490,7 +532,7 @@ export default {
       } else {
         enableOrganizationById({ id: organizationTableRowData.id }).then(res => {
           if (res.code === 200) {
-            this.$message.success(res.message);
+            this.$message.success('启用成功');
             this.getOrganizationTableData(this.pageObject, this.searchParameters);
             this.$refs.organizationTree.getTreeData();
           }
@@ -505,12 +547,43 @@ export default {
     handleAddOrganization() {
       this.form.id = undefined;
       this.modleVisible = true;
-      this.form.parentId = this.searchParameters.searchParentIds ? this.searchParameters.searchParentIds[0] : this.searchParameters.searchParentId ? this.searchParameters.searchParentId : undefined;
+      this.form.parentId = this.searchParameters.searchParentIds
+        ? this.searchParameters.searchParentIds[0]
+        : this.searchParameters.searchParentId
+        ? this.searchParameters.searchParentId
+        : undefined;
+    },
+
+    /**
+     * @description: 重置搜索条件
+     */
+    handleReset() {
+      const copySearchParameters = JSON.parse(JSON.stringify(this.searchParameters));
+      this.searchParameters = {};
+      this.searchParameters.searchParentIds = copySearchParameters.searchParentIds;
+      this.searchParameters.searchParentId = copySearchParameters.searchParentId;
+      this.searchOrganizationTableData();
+    },
+    /**
+     * @description: 根据isEnable判断表格背景颜色
+     * @param {object} record 当前行数据
+     */
+    rowClassName(record) {
+      let className = 'enableBackground';
+      if (record.isEnable === 1) className = 'deactivateBakcground';
+      return className;
     }
   }
 };
 </script>
-
+<style>
+.deactivateBakcground {
+  background: white !important;
+}
+.enableBackground {
+  background: #fafafa !important;
+}
+</style>
 <style lang="less" scoped>
 .deactivate {
   color: red;

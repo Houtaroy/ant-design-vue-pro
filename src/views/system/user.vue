@@ -28,7 +28,7 @@
                   <a-col :md="8" :sm="24">
                     <a-form-item label="角色">
                       <a-select allowClear v-model="searchParameters.searchRoleId" size="default" placeholder="请选择">
-                        <a-select-option v-for="item in userRoleArray" :key="item.id">
+                        <a-select-option :title="item.name" v-for="item in userRoleArray" :key="item.id">
                           {{ item.name }}
                         </a-select-option>
                       </a-select>
@@ -50,8 +50,8 @@
                 </template>
                 <a-col :md="8" :sm="24" style="display:flex;justify-content: flex-end">
                   <span>
-                    <a-button style="margin-left: 30px" @click="() => (this.searchParameters = {})">重置</a-button>
-                    <a-button style="margin-left: 8px" type="primary" @click="() => this.searchUserTableData()">查询</a-button>
+                    <a-button type="primary" @click="() => this.searchUserTableData()">查询</a-button>
+                    <a-button style="margin-left: 8px" @click="handleReset">重置</a-button>
                     <a @click="() => (this.advanced = !this.advanced)" style="margin-left: 8px">
                       {{ advanced ? '收起' : '展开' }}
                       <a-icon :type="advanced ? 'up' : 'down'" />
@@ -66,30 +66,41 @@
           <div class="userMainTableAdd">
             <div>用户列表</div>
             <div>
-              <a-button
-                type="primary"
-                class="buttonMargin"
-                @click="handleBatchEnable"
-                :disabled="batchSelectIdArray.length === 0"
+              <a-popconfirm
+              :disabled="batchSelectIdArray.length === 0"
+                title="此操作将批量启用数据，是否继续?"
+                ok-text="是"
+                cancel-text="否"
+                @confirm="handleBatchEnable"
               >
-                批量启用
-              </a-button>
-              <a-button
-                type="primary"
-                class="buttonMargin"
-                @click="handleBatchDisable"
-                :disabled="batchSelectIdArray.length === 0"
+                <a-button type="primary" class="buttonMargin" :disabled="batchSelectIdArray.length === 0">
+                  批量启用
+                </a-button>
+              </a-popconfirm>
+              <a-popconfirm
+               :disabled="batchSelectIdArray.length === 0"
+                title="此操作将批量停用数据，是否继续?"
+                ok-text="是"
+                cancel-text="否"
+                @confirm="handleBatchDisable"
               >
-                批量停用
-              </a-button>
-              <a-button
-                type="primary"
-                class="buttonMargin"
-                @click="handleBatchDelete"
+                <a-button type="primary" class="buttonMargin" :disabled="batchSelectIdArray.length === 0">
+                  批量停用
+                </a-button>
+              </a-popconfirm>
+
+              <a-popconfirm
                 :disabled="batchSelectIdArray.length === 0"
+                title="此操作将批量删除数据，是否继续?"
+                ok-text="是"
+                cancel-text="否"
+                @confirm="handleBatchDelete"
               >
-                批量删除
-              </a-button>
+                <a-button type="primary" class="buttonMargin" :disabled="batchSelectIdArray.length === 0">
+                  批量删除
+                </a-button>
+              </a-popconfirm>
+
               <a-button type="primary" @click="handleAddUser()">
                 新增用户
               </a-button>
@@ -101,22 +112,46 @@
               :columns="columns"
               :data-source="tableData"
               :pagination="false"
-              size="middle"
               :rowKey="
                 (record, index) => {
                   return record.id;
                 }
               "
+              :rowClassName="rowClassName"
               bordered
             >
-              <span slot="name" slot-scope="text">{{ text }}</span>
               <template slot="roles" slot-scope="roles">
-                <span v-for="(item,index) in roles" :key="item.id"> {{ item.name }}  <span v-if="index!=roles.length-1">/</span></span>
+                <span v-for="(item, index) in roles" :key="item.id">
+                  {{ item.name }} <span v-if="index != roles.length - 1">/</span></span
+                >
               </template>
               <template slot="action" slot-scope="text, record">
-                <a slot="action" href="javascript:;" @click="handleIsEnable(record)" :class="{deactivate:record.isEnable == 1,enable:record.isEnable == 0}">{{
-                  record.isEnable == 1 ? '停用' : '启用'
-                }}</a>
+                <a-popconfirm
+                  slot="action"
+                  title="此操作将停用该条数据，是否继续?"
+                  ok-text="是"
+                  cancel-text="否"
+                  @confirm="handleIsEnable(record)"
+                >
+                  <a href="javascript:;" v-if="record.isEnable == 1" :class="{ deactivate: record.isEnable == 1 }">停用</a>
+                </a-popconfirm>
+                <a
+                  slot="action"
+                  href="javascript:;"
+                  @click="handleIsEnable(record)"
+                  v-if="record.isEnable == 0"
+                  :class="{ enable: record.isEnable == 0 }"
+                  >启用</a
+                >
+                <a-popconfirm
+                  slot="action"
+                  title="此操作将重置密码，是否继续?"
+                  ok-text="是"
+                  cancel-text="否"
+                  @confirm="resetPassword(record)"
+                >
+                  <a href="javascript:;" style="margin-left:5px">重置密码</a>
+                </a-popconfirm>
                 <a slot="action" href="javascript:;" @click="handleEditUser(record)" style="margin-left:5px">编辑</a>
                 <a-popconfirm
                   slot="action"
@@ -137,6 +172,7 @@
             show-quick-jumper
             :page-size-options="pageSizeOptions"
             :total="userTableTotal"
+            :show-total="total => `共 ${userTableTotal} 条`"
             show-size-changer
             :page-size="pageObject.pageSize"
             @change="handlePageNumberChange"
@@ -146,71 +182,113 @@
         </div>
       </div>
       <a-modal
+        width="50%"
         v-model="modleVisible"
         :title="form.id ? '编辑用户' : '新增用户'"
         @cancel="() => ((this.modleVisible = false), this.clearFormData())"
         :confirm-loading="formButtonDisableFlag"
         @ok="onSubmit"
       >
-        <a-form-model ref="userRuleForm" :model="form" :rules="rules" :label-col="labelCol" :wrapper-col="wrapperCol">
-          <a-form-model-item ref="name" label="用户名" prop="name">
-            <a-input v-model="form.name" placeholder="请输入用户名" />
-          </a-form-model-item>
-          <a-form-model-item ref="username" label="登录名" prop="username">
-            <a-input v-model="form.username" placeholder="请输入登录名" />
-          </a-form-model-item>
-          <a-form-model-item ref="email" label="邮箱" prop="email">
-            <a-input v-model="form.email" placeholder="请输入邮箱" />
-          </a-form-model-item>
-          <a-form-model-item label="角色" prop="roleIds">
-            <a-select v-model="form.roleIds" mode="multiple" size="default" placeholder="请选择角色">
-              <a-select-option v-for="item in userRoleArray" :key="item.id">
-                {{ item.name }}
-              </a-select-option>
-            </a-select>
-          </a-form-model-item>
-          <a-form-model-item label="所属组织" prop="organizationId">
-            <a-tree-select
-              :replaceFields="{
-                title: 'name',
-                value: 'id'
-              }"
-              v-model="form.organizationId"
-              style="width: 100%"
-              @change="organizationId => (this.getUserDepartmentTree({ searchOrganizationId: organizationId }),this.form.departmentId = undefined)"
-              :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
-              :tree-data="formOrganizationTreeData"
-              placeholder="请选择所属组织"
-              tree-default-expand-all
-            >
-            </a-tree-select>
-          </a-form-model-item>
-          <a-form-model-item label="所属部门" prop="departmentId">
-            <a-tree-select
-              :replaceFields="{
-                title: 'name',
-                value: 'id'
-              }"
-              v-model="form.departmentId"
-              style="width: 100%"
-              :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
-              :tree-data="formDepartmentTreeData"
-              placeholder="请选择所属部门"
-              tree-default-expand-all
-            >
-            </a-tree-select>
-          </a-form-model-item>
-          <a-form-model-item label="状态" prop="isEnable">
-            <a-radio-group v-model="form.isEnable" button-style="solid">
-              <a-radio-button value="1">
-                启用
-              </a-radio-button>
-              <a-radio-button value="0">
-                停用
-              </a-radio-button>
-            </a-radio-group>
-          </a-form-model-item>
-        </a-form-model>
+        <div id="modalContent">
+          <div class="formAspin" v-if="editWaitFormLoading">
+            <a-spin />
+          </div>
+          <div class="modalContentForm">
+            <div class="modalContentFormTitle">基础信息</div>
+            <div class="modalContentFormContent">
+              <a-form-model ref="userRuleForm" :model="form" :rules="rules" :label-col="labelCol" :wrapper-col="wrapperCol">
+                <a-form-model-item ref="name" label="用户名" prop="name">
+                  <a-input v-model="form.name" placeholder="请输入用户名" />
+                </a-form-model-item>
+                <a-form-model-item ref="username" label="登录名" prop="username">
+                  <a-input v-model="form.username" placeholder="请输入登录名" />
+                </a-form-model-item>
+                <a-form-model-item ref="email" label="邮箱" prop="email">
+                  <a-input v-model="form.email" placeholder="请输入邮箱" />
+                </a-form-model-item>
+                <a-form-model-item label="所属组织" prop="organizationId">
+                  <a-tree-select
+                    :replaceFields="{
+                      title: 'name',
+                      value: 'id'
+                    }"
+                    v-model="form.organizationId"
+                    style="width: 100%"
+                    @change="
+                      organizationId => (
+                        this.getUserDepartmentTree({ searchOrganizationId: organizationId }),
+                        (this.form.departmentId = undefined)
+                      )
+                    "
+                    :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
+                    :tree-data="formOrganizationTreeData"
+                    placeholder="请选择所属组织"
+                    tree-default-expand-all
+                  >
+                  </a-tree-select>
+                </a-form-model-item>
+                <a-form-model-item label="所属部门" prop="departmentId">
+                  <a-tree-select
+                    :replaceFields="{
+                      title: 'name',
+                      value: 'id'
+                    }"
+                    v-model="form.departmentId"
+                    style="width: 100%"
+                    :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
+                    :tree-data="formDepartmentTreeData"
+                    placeholder="请选择所属部门"
+                    tree-default-expand-all
+                  >
+                  </a-tree-select>
+                </a-form-model-item>
+                <a-form-model-item label="状态" prop="isEnable">
+                  <a-radio-group v-model="form.isEnable" button-style="solid">
+                    <a-radio-button value="1">
+                      启用
+                    </a-radio-button>
+                    <a-radio-button value="0">
+                      停用
+                    </a-radio-button>
+                  </a-radio-group>
+                </a-form-model-item>
+              </a-form-model>
+            </div>
+          </div>
+          <div class="modalContentTree">
+            <div class="modalContentTreeTitle">
+              <div class="title">角色分配</div>
+              <div class="icon">
+                <span>
+                  <a-popover placement="bottomRight">
+                    <template slot="content">
+                      <p style="cursor: pointer;" @click="() => (this.checkedKeys = this.roleTreeAllids)">
+                        选择全部
+                      </p>
+                      <p style="cursor: pointer;" @click="() => (this.checkedKeys = [])">取消选择</p>
+                      <p style="cursor: pointer;" @click="() => (this.expandedKeys = this.roleTreeAllids)">
+                        展开全部
+                      </p>
+                      <span style="cursor: pointer;" @click="() => (this.expandedKeys = [])">折叠全部</span>
+                    </template>
+                    <a-icon type="menu-unfold" /> </a-popover
+                  ></span>
+              </div>
+            </div>
+            <div class="modalContentTreeContent">
+              <a-tree
+                :replaceFields="{
+                  title: 'name',
+                  key: 'id',
+                }"
+                v-model="checkedKeys"
+                checkable
+                :expanded-keys.sync="expandedKeys"
+                :tree-data="roleTreeArray"
+              />
+            </div>
+          </div>
+        </div>
       </a-modal>
     </div>
   </page-header-wrapper>
@@ -229,7 +307,9 @@ import {
   batchDeleteUserByIds,
   departmentsTree,
   listAllRoles,
-  loadUserById
+  loadUserById,
+  resetUserPasswordById,
+  listAllApplications
 } from '@/api/api';
 import moment from 'moment';
 import OrganizationMixTree from './components/tree/OrganizationMixTree';
@@ -239,29 +319,38 @@ const columns = [
   {
     title: '用户名',
     dataIndex: 'name',
-    scopedSlots: { customRender: 'name' }
+    width: '10%',
+    ellipsis: true
   },
   {
     title: '创建时间',
-    dataIndex: 'createTime'
+    dataIndex: 'createTime',
+    width: '15%',
+    ellipsis: true
   },
   {
     title: '角色',
     dataIndex: 'roles',
-    width: '20%',
+    width: '15%',
     scopedSlots: { customRender: 'roles' }
   },
   {
     title: '登录名',
-    dataIndex: 'username'
+    dataIndex: 'username',
+    width: '10%',
+    ellipsis: true
   },
   {
     title: '所属组织',
-    dataIndex: 'organization.name'
+    dataIndex: 'organization.name',
+    width: '15%',
+    ellipsis: true
   },
   {
     title: '所属部门',
-    dataIndex: 'department.name'
+    dataIndex: 'department.name',
+    width: '15%',
+    ellipsis: true
   },
   {
     title: '操作',
@@ -273,6 +362,7 @@ export default {
   name: 'User',
   data() {
     return {
+       editWaitFormLoading: false, // 加载编辑回显数据等待Loading
       isBatchButtonDisabled: true, // 判断批量按钮的禁用状态
       selectDepartmentFlagArray: [], // 接受部门列表子组件选中的ID数组 []为未选中状态 有值为选中状态
       formButtonDisableFlag: false, // 表单确定禁用按钮 防止多次点击多次保存
@@ -280,7 +370,6 @@ export default {
       searchParameters: {}, // 表格搜索条件Input绑定
       advanced: false, // 控制搜索条件的展开折叠
       modleVisible: false, // 控制表单弹框
-      userRoleArray: [], // 角色下拉数组
       tableData, // 表格数据
       columns, // 表格头部
       currentPage: 1, // 默认分页当前页
@@ -298,8 +387,6 @@ export default {
         username: undefined,
         name: undefined, // 名字
         email: undefined, // 邮箱
-        roles: [], // 角色
-        roleIds: [], // 角色ID
         isEnable: '1', // 状态
         departmentId: undefined, // 所属部门ID
         department: undefined, // 所属部门
@@ -324,13 +411,16 @@ export default {
           { required: true, message: '请输入用户名', trigger: 'blur' },
           { max: 200, message: '用户名长度不能大于200', trigger: 'blur' }
         ],
-        roleIds: [{ required: true, message: '请选择角色', trigger: 'change' }],
         organizationId: [{ required: true, message: '请选择组织', trigger: 'change' }]
       },
       formDepartmentTreeData: [], // 部门下拉选择树结构数据
       formOrganizationTreeData: [], // 组织下拉选择树结构数据
       batchSelectIdArray: [], // 批量选中的数据ID
-      selectMixTreeOrganizationId: undefined // 点击左侧混合树获取到部门上级组织ID
+      selectMixTreeOrganizationId: undefined, // 点击左侧混合树获取到部门上级组织ID
+      expandedKeys: [], // 控制树形下拉 展开收起全选取消全选 功能
+      checkedKeys: [], // 树形下拉选中的数据
+      roleTreeAllids: [], // 获取所有的接口ID
+      roleTreeArray: [] // 角色树
     };
   },
   components: {
@@ -345,9 +435,9 @@ export default {
      */
     userTableTotal() {
       if (this.userTableTotal === this.getExceptCurrentPageTableTotalData && this.userTableTotal !== 0) {
-       this.pageObject.pageNumber = Number(this.currentPage) - 1;
-       this.currentPage -= 1;
-       this.getUserTableData(this.pageObject, this.searchParameters);
+        this.currentPage -= 1;
+        this.pageObject.pageNumber = Number(this.currentPage) - 1;
+        this.getUserTableData(this.pageObject, this.searchParameters);
       }
     }
   },
@@ -360,8 +450,46 @@ export default {
     this.getUserTableData(this.pageObject, this.searchParameters); // 获取表格数据
     this.getRoles(); // 获取角色数据列表
     this.getFormOrganizationsTree(); // 获取表单组织树结构数据
+    this.getListAllApplications(); // 获取应用角色树
   },
   methods: {
+    /**
+     * @description: 获取应用角色树
+     */
+    getListAllApplications() {
+      listAllApplications().then(res => {
+        if (res.code === 200) {
+            this.roleTreeArray = res.data;
+            this.roleTreeArray[0].roles = [
+              { name: '模拟角色1', id: '1', children: [{ name: '模拟角色1-1', id: '9' }] }
+            ];
+            this.roleTreeArray[1].roles = [
+              { name: '模拟角色2', id: '2' }
+            ];
+             this.roleTreeArray[2].roles = [
+              { name: '模拟角色3', id: '3' }
+            ];
+            this.getTreeData(this.roleTreeArray);
+            this.roleTreeArray.forEach(item => {
+              if (item.roles) {
+                item.children = item.roles;
+              }
+            });
+        }
+      });
+    },
+        /**
+     * @description: 利用递归获取到所有的节点id
+     * @param {array} roleTreeArray 树形下拉的数据
+     */
+    getTreeData(roleTreeArray) {
+      roleTreeArray.forEach(item => {
+        this.roleTreeAllids.push(item.id);
+        if (item.children) {
+          this.getTreeData(item.children);
+        }
+      });
+    },
     /**
      * @description: 表格复选框选中数据变化
      * @param {array} selectedRowKeys 下标回值
@@ -378,11 +506,11 @@ export default {
 
     selectMixTreeOrganizationData(organizationId, organizationType) {
       if (organizationId.length > 1) {
-         this.searchParameters.searchOrganizationIds = organizationId;
-         this.searchParameters.searchOrganizationId = undefined;
+        this.searchParameters.searchOrganizationIds = organizationId;
+        this.searchParameters.searchOrganizationId = undefined;
       } else {
-         this.searchParameters.searchOrganizationIds = undefined;
-         this.searchParameters.searchOrganizationId = organizationId[0];
+        this.searchParameters.searchOrganizationIds = undefined;
+        this.searchParameters.searchOrganizationId = organizationId[0];
       }
       this.searchParameters.searchDepartmentIds = undefined;
       this.searchParameters.searchDepartmentId = undefined;
@@ -427,20 +555,22 @@ export default {
 
     getUserTableData(page, params) {
       this.userLoading = true;
-      listUsers(Object.assign({}, page, params)).then(resp => {
-        if (resp.code === 200 && resp.data.content) {
-          this.tableData = resp.data.content;
-          this.tableData.forEach(item => {
-            item.createTime = moment(item.createTime).format('YYYY-MM-DD HH:mm');
-          });
-          this.userTableTotal = resp.data.totalElements;
-        } else {
-          this.userTableTotal = resp.data.totalElements;
-          this.tableData = [];
-        }
-      }).finally(() => {
-        this.userLoading = false;
-      });
+      listUsers(Object.assign({}, page, params))
+        .then(resp => {
+          if (resp.code === 200 && resp.data.content) {
+            this.tableData = resp.data.content;
+            this.tableData.forEach(item => {
+              item.createTime = moment(item.createTime).format('YYYY-MM-DD HH:mm');
+            });
+            this.userTableTotal = resp.data.totalElements;
+          } else {
+            this.userTableTotal = resp.data.totalElements;
+            this.tableData = [];
+          }
+        })
+        .finally(() => {
+          this.userLoading = false;
+        });
     },
 
     /**
@@ -450,6 +580,11 @@ export default {
       listAllRoles().then(res => {
         if (res.code === 200) {
           this.userRoleArray = res.data;
+          this.userRoleArray = this.userRoleArray.filter(item => {
+            if (item.isEnable === 1) {
+              return item;
+            }
+          });
         }
       });
     },
@@ -495,14 +630,13 @@ export default {
         if (valid) {
           this.formButtonDisableFlag = true;
           // 构建后端需要的参数形式[{id:1}]
-          this.form.roles = this.form.roleIds.map(item => {
+          this.form.roles = this.checkedKeys.map(item => {
             return {
               id: item
             };
           });
           this.form.department = { id: this.form.departmentId };
           this.form.organization = { id: this.form.organizationId };
-
           // 编辑
           if (this.form.id) {
             this.userUpdate(this.form);
@@ -581,7 +715,7 @@ export default {
       if (userTableRowData.isEnable === 1) {
         disableUserById({ id: userTableRowData.id }).then(res => {
           if (res.code === 200) {
-            this.$message.success(res.message);
+            this.$message.success('停用成功');
             this.modleVisible = false;
             this.getUserTableData(this.pageObject, this.searchParameters);
           }
@@ -589,7 +723,7 @@ export default {
       } else {
         enableUserById({ id: userTableRowData.id }).then(res => {
           if (res.code === 200) {
-            this.$message.success(res.message);
+            this.$message.success('启用成功');
             this.modleVisible = false;
             this.getUserTableData(this.pageObject, this.searchParameters);
           }
@@ -603,7 +737,7 @@ export default {
       this.userLoading = true;
       batchDisableUserByIds({ body: this.batchSelectIdArray }).then(res => {
         if (res.code === 200) {
-          this.afterBatchActions(res);
+          this.afterBatchActions(res, 1);
         }
       });
     },
@@ -614,24 +748,35 @@ export default {
       this.userLoading = true;
       batchEnableUserByIds({ body: this.batchSelectIdArray }).then(res => {
         if (res.code === 200) {
-          this.afterBatchActions(res);
+          this.afterBatchActions(res, 2);
         }
       });
     },
+      /**
+     * @description: 点击批量删除
+     */
     handleBatchDelete() {
       this.userLoading = true;
       batchDeleteUserByIds({ body: this.batchSelectIdArray }).then(res => {
         if (res.code === 200) {
-          this.afterBatchActions(res);
+          this.afterBatchActions(res, 3);
         }
       });
     },
     /**
      * @description: 批量停用 启用 删除 公共返回数据
      * @param {object} batchSuccessData 接口返回数据
+     * @param {number} type 判断点击的类型
      */
 
-    afterBatchActions(batchSuccessData) {
+    afterBatchActions(batchSuccessData, type) {
+      if (type === 1) {
+        this.$message.success('停用成功');
+      } else if (type === 2) {
+        this.$message.success('启用成功');
+      } else {
+        this.$message.success('删除成功');
+      }
       this.$message.success(batchSuccessData.message);
       this.batchSelectIdArray = [];
       this.getUserTableData(this.pageObject, this.searchParameters);
@@ -678,11 +823,20 @@ export default {
       this.form.id = undefined;
       this.modleVisible = true;
       if (this.isOrganization === true) {
-        this.form.organizationId = this.searchParameters.searchOrganizationIds ? this.searchParameters.searchOrganizationIds[0] : this.searchParameters.searchOrganizationId ? this.searchParameters.searchOrganizationId : undefined;
+        this.form.organizationId = this.searchParameters.searchOrganizationIds
+          ? this.searchParameters.searchOrganizationIds[0]
+          : this.searchParameters.searchOrganizationId
+          ? this.searchParameters.searchOrganizationId
+          : undefined;
+          this.getUserDepartmentTree({ searchOrganizationId: this.form.organizationId });
       } else if (this.isOrganization === false) {
         this.form.organizationId = this.selectMixTreeOrganizationId;
-        this.form.departmentId = this.searchParameters.searchDepartmentIds ? this.searchParameters.searchDepartmentIds[0] : this.searchParameters.searchDepartmentId ? this.searchParameters.searchDepartmentId : undefined;
-        this.getUserDepartmentTree({ searchOrganizationId: this.form.organizationId });
+        this.form.departmentId = this.searchParameters.searchDepartmentIds
+          ? this.searchParameters.searchDepartmentIds[0]
+          : this.searchParameters.searchDepartmentId
+          ? this.searchParameters.searchDepartmentId
+          : undefined;
+          this.getUserDepartmentTree({ searchOrganizationId: this.form.organizationId });
       }
     },
 
@@ -707,15 +861,15 @@ export default {
       loadUserById({ id: userTableRowData.id }).then(res => {
         if (res.code === 200) {
           this.form = Object.assign({}, this.form, res.data);
-          this.form.roleIds = this.form.roles.map(item => {
-            return item.id;
-          });
           this.form.organizationId = this.form.organization.id;
           if (this.form.department) {
             this.form.departmentId = this.form.department.id;
           } else {
             this.form.department = undefined;
           }
+          // this.checkedKeys = res.data.roles.map(item => {
+          //     return item.id;
+          // });
           this.form.isEnable = String(this.form.isEnable);
           this.getUserDepartmentTree({ searchOrganizationId: this.form.organization });
           this.modleVisible = true;
@@ -729,10 +883,51 @@ export default {
     clearFormData() {
       this.$refs.userRuleForm.resetFields();
       this.form = this.$options.data.call(this).form;
+    },
+    /**
+     * @description: 重置搜索条件
+     */
+    handleReset() {
+      const copySearchParameters = JSON.parse(JSON.stringify(this.searchParameters));
+      this.searchParameters = {};
+      this.searchParameters.searchDepartmentIds = copySearchParameters.searchDepartmentIds;
+      this.searchParameters.searchDepartmentId = copySearchParameters.searchDepartmentId;
+      this.searchParameters.searchOrganizationIds = copySearchParameters.searchOrganizationIds;
+      this.searchParameters.searchOrganizationId = copySearchParameters.searchOrganizationId;
+      this.searchUserTableData();
+    },
+    /**
+     * @description: 根据isEnable判断表格背景颜色
+     * @param {*} record 当前行数据
+     */
+    rowClassName(record) {
+      let className = 'enableBackground';
+      if (record.isEnable === 1) className = 'deactivateBakcground';
+      return className;
+    },
+    /**
+     * @description: 重置密码
+     * @param {object} userTableRowData 当前表格数据行
+     */
+    resetPassword(userTableRowData) {
+      resetUserPasswordById({ id: userTableRowData.id }).then(res => {
+          if (res.code === 200) {
+            this.$message.success(res.message);
+            this.getUserTableData(this.pageObject, this.searchParameters);
+          }
+      });
     }
   }
 };
 </script>
+<style>
+.deactivateBakcground {
+  background: white !important;
+}
+.enableBackground{
+  background: #FAFAFA !important;
+}
+</style>
 <style lang="less" scoped>
 .table-page-search-wrapper /deep/ .ant-form-inline .ant-form-item > .ant-form-item-label {
   line-height: 32px;
@@ -797,7 +992,6 @@ export default {
         height: calc(100vh - 380px);
         padding: 10px;
         overflow: scroll;
-
       }
       .userMainTableContent /deep/ .ant-table-tbody .ant-table-row:nth-child(2n) {
         background: #fafafa;
@@ -815,6 +1009,96 @@ export default {
       align-items: center;
       justify-content: flex-end;
       padding: 0 10px 0 0;
+    }
+  }
+  .userMain /deep/.table-page-search-wrapper .ant-form-inline .ant-form-item .ant-form-item-control-wrapper {
+    -webkit-box-flex: 1;
+    -ms-flex: 1 1;
+    flex: 1 1;
+    display: inline-block;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+}
+#modalContent {
+  width: 100%;
+  display: flex;
+  position: relative;
+  .formAspin {
+    position: absolute;
+    width: 100%;
+    height: 400px;
+    background: #ececec;
+    border-radius: 4px;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modalContentForm {
+    width: 50%;
+    height: 100%;
+    border-right: 1px solid #ececec;
+    display: flex;
+    flex-direction: column;
+    .modalContentFormTitle {
+      width: 100%;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .modalContentFormContent {
+      padding: 0 0 0 20px;
+      flex: 1;
+    }
+    .modalContentFormContent /deep/ .ant-form-item-label {
+      display: inline-block;
+      overflow: hidden;
+      line-height: 39.9999px;
+      white-space: nowrap;
+      text-align: right;
+      vertical-align: middle;
+      width: 100px;
+    }
+  }
+  .modalContentTree {
+    width: 50%;
+    height: 100%;
+    max-height: 500px;
+    .modalContentTreeTitle {
+      width: 100%;
+      height: 64px;
+      display: flex;
+      font-size: 16px;
+      .title {
+        width: 80%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .icon {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+    }
+    .modalContentTreeContent {
+      width: 100%;
+      height: 420px;
+      overflow: scroll;
+      display: flex;
+      margin-left: 30%;
+    }
+    .modalContentTreeContent::-webkit-scrollbar {
+      display: none;
     }
   }
 }

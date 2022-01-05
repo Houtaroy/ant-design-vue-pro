@@ -28,7 +28,7 @@
                 </a-col>
                 <a-col :md="6" :sm="32">
                   <a-form-item label="创建时间">
-                    <a-range-picker allowClear v-model="searchParameters.interfaceCreatetime" />
+                    <a-range-picker   @change="onChangeData" allowClear v-model="searchParameters.permissionsCreateData" />
                   </a-form-item>
                 </a-col>
               </a-row>
@@ -36,10 +36,10 @@
           </div>
         </div>
         <div class="permissionSearchButton">
-          <a-button style="margin-right:20px" @click="() => (this.searchParameters = {})">重置</a-button>
-          <a-button type="primary" @click="() => this.searchPermissionTableData()">
+          <a-button style="margin-right:20px" type="primary" @click="() => this.searchPermissionTableData()">
             查询
           </a-button>
+          <a-button @click="handleReset">重置</a-button>
         </div>
       </div>
       <div class="permissionsTable">
@@ -85,6 +85,7 @@
           show-quick-jumper
           :page-size-options="pageSizeOptions"
           :total="permissionsTableTotal"
+          :show-total="total => `共 ${permissionsTableTotal} 条`"
           show-size-changer
           :page-size="pageObject.pageSize"
           @change="handlePageNumberChange"
@@ -93,7 +94,7 @@
         </a-pagination>
       </div>
       <a-modal
-        width="50%"
+        width="956.5px"
         v-model="modleVisible"
         :title="form.id ? '编辑权限' : '新增权限'"
         @cancel="() => (this.clearFormData(), (this.modleVisible = false))"
@@ -101,7 +102,7 @@
         @ok="onSubmit"
       >
         <div id="modalContent">
-          <div class="formAspin" v-if="editWaitForLoading">
+          <div class="formAspin" v-if="editWaitFormLoading">
             <a-spin />
           </div>
           <div class="modalContentForm">
@@ -135,7 +136,7 @@
                     }"
                     v-model="form.parentId"
                     style="width: 100%"
-                    :dropdown-style="{ maxHeight: '400px', overflow: 'auto' }"
+                    :dropdown-style="{width: '214px',maxHeight: '400px', overflow: 'auto' }"
                     :tree-data="permissionsTreeArray"
                     placeholder="请选择上级权限"
                     tree-default-expand-all
@@ -165,7 +166,7 @@
                       <span style="cursor: pointer;" @click="() => (this.expandedKeys = [])">折叠全部</span>
                     </template>
                     <a-icon type="menu-unfold" /> </a-popover
-                ></span>
+                  ></span>
               </div>
             </div>
             <div class="modalContentTreeContent">
@@ -193,43 +194,54 @@ import {
   createPermission,
   updatePermission,
   deletePermissionById,
-  apiTree,
+  listAllResources,
   loadPermissionById
 } from '@/api/api';
 import moment from 'moment';
 const columns = [
   {
     title: '权限名称',
-    dataIndex: 'name'
+    dataIndex: 'name',
+    width: '16.6%',
+    ellipsis: true
   },
   {
     title: '权限代码',
-    dataIndex: 'code'
+    dataIndex: 'code',
+    width: '16.6%',
+    ellipsis: true
   },
   {
     title: '权限类型',
-    dataIndex: 'typeName'
+    dataIndex: 'typeName',
+    width: '16.6%',
+    ellipsis: true
   },
   {
     title: '组件地址',
-    dataIndex: 'component'
+    dataIndex: 'component',
+    width: '16.6%',
+    ellipsis: true
   },
   {
     title: '创建时间',
-    dataIndex: 'createTime'
+    dataIndex: 'createTime',
+    width: '16.6%',
+    ellipsis: true
   },
   {
     title: '操作',
     scopedSlots: { customRender: 'action' },
-    width: '200px'
+    width: '16.6%',
+    ellipsis: true
   }
 ];
 export default {
-  name: 'Role',
+  name: 'Permissions',
   data() {
     return {
       advanced: false, // 控制搜索条件的展开折叠
-      editWaitForLoading: false, // 加载编辑回显数据等待Loading
+      editWaitFormLoading: false, // 加载编辑回显数据等待Loading
       formButtonDisableFlag: false, // 表单确定禁用按钮 防止多次点击多次保存
       permissionsLoading: false, // 加载表格的loading
       searchParameters: {}, // 表格搜索条件值
@@ -282,8 +294,8 @@ export default {
 
     permissionsTableTotal() {
       if (this.permissionsTableTotal === this.getExceptCurrentPageTableTotalData && this.permissionsTableTotal !== 0) {
-        this.pageObject.pageNumber = Number(this.currentPage) - 1;
         this.currentPage -= 1;
+         this.pageObject.pageNumber = Number(this.currentPage) - 1;
         this.getPermissionsTableData(this.pageObject, this.searchParameters);
       }
     }
@@ -307,9 +319,14 @@ export default {
      * @description: 获取接口树
      */
     getInterfacesTree() {
-      apiTree().then(res => {
+      listAllResources().then(res => {
         if (res.code === 200) {
           this.interfacesTreeArray = res.data;
+          this.interfacesTreeArray.forEach(item => {
+            if (item.apis) {
+              item.children = item.apis;
+            }
+          });
           this.getTreeData(this.interfacesTreeArray);
         }
       });
@@ -461,7 +478,7 @@ export default {
      * @param {object} permissionTableRowData 表格某一行的数据对象
      */
     handleEdit(permissionTableRowData) {
-      this.editWaitForLoading = true;
+      this.editWaitFormLoading = true;
       this.modleVisible = true;
 
       loadPermissionById({ id: permissionTableRowData.id })
@@ -476,7 +493,7 @@ export default {
           }
         })
         .finally(() => {
-          this.editWaitForLoading = false;
+          this.editWaitFormLoading = false;
         });
     },
 
@@ -504,6 +521,15 @@ export default {
       this.pageObject.pageNumber = Number(this.currentPage) - 1;
       this.getPermissionsTableData(this.pageObject, this.searchParameters);
     },
+        /**
+     * @description: 日期选择器改变
+     * @param {array} date UI框架自带
+     * @param {array} dateString UI框架自带 时间区间
+     */
+    onChangeData(date, dateString) {
+      this.searchParameters.searchCreateDateBegin = dateString[0];
+      this.searchParameters.searchCreateDateEnd = dateString[1];
+    },
 
     /**
      * @description: 获取分页页数改变后的值
@@ -513,6 +539,13 @@ export default {
       this.currentPage = pageNumber;
       this.pageObject.pageNumber = Number(this.currentPage) - 1;
       this.getPermissionsTableData(this.pageObject, this.searchParameters);
+    },
+        /**
+     * @description: 重置搜索条件
+     */
+    handleReset() {
+      this.searchParameters = {};
+      this.searchPermissionTableData();
     }
   }
 };
@@ -664,6 +697,7 @@ export default {
       text-align: right;
       vertical-align: middle;
       width: 100px;
+      overflow:hidden;
     }
   }
   .modalContentTree {
@@ -697,6 +731,24 @@ export default {
       display: flex;
       margin-left: 30%;
     }
+    .modalContentTreeContent /deep/ .ant-tree li .ant-tree-node-content-wrapper {
+    display: inline-block;
+    height: 24px;
+    margin: 0;
+    padding: 0 5px;
+    color: rgba(0, 0, 0, 0.65);
+    line-height: 24px;
+    text-decoration: none;
+    vertical-align: top;
+    border-radius: 2px;
+    cursor: pointer;
+    -webkit-transition: all 0.3s;
+    transition: all 0.3s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 140px;
+  }
     .modalContentTreeContent::-webkit-scrollbar {
       display: none;
     }

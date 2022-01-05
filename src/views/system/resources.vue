@@ -1,51 +1,55 @@
 <template>
   <page-header-wrapper :title="false">
-    <div class="Role">
-      <a-spin tip="加载中..." class="position" v-if="roleLoading"> </a-spin>
-      <div class="roleSearch">
-        <div class="roleSearchInput">
+    <div class="resources">
+      <a-spin tip="加载中..." class="position" v-if="resourcesLoading"> </a-spin>
+      <div class="resourcesSearch">
+        <div class="resourcesSearchInput">
           <div class="table-page-search-wrapper">
             <a-form layout="inline">
               <a-row :gutter="64">
                 <a-col :md="6" :sm="32">
-                  <a-form-item label="角色名称">
-                    <a-input allowClear v-model="searchParameters.searchName" placeholder="请输入角色名称" />
+                  <a-form-item label="资源名称">
+                    <a-input allowClear v-model="searchParameters.searchName" placeholder="请输入" />
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="32">
-                  <a-form-item label="角色代码">
-                    <a-input allowClear v-model="searchParameters.searchCode" placeholder="请输入角色值" />
+                  <a-form-item label="资源代码">
+                    <a-input allowClear v-model="searchParameters.searchCode" placeholder="请输入" />
                   </a-form-item>
                 </a-col>
                 <a-col :md="6" :sm="32">
-                  <a-form-item label="创建日期">
-                    <a-range-picker @change="onChangeData" allowClear v-model="searchParameters.roleDate" />
+                  <a-form-item label="资源类型">
+                    <a-select allowClear v-model="searchParameters.searchType" placeholder="请选择">
+                      <a-select-option v-for="item in resourcesTypeArray" :key="item.id">
+                        {{ item.name }}
+                      </a-select-option>
+                    </a-select>
                   </a-form-item>
                 </a-col>
               </a-row>
             </a-form>
           </div>
         </div>
-        <div class="roleSearchButton">
-          <a-button style="margin-right:20px" type="primary" @click="() => this.searchRoleTableData()">
+        <div class="resourcesSearchButton">
+          <a-button style="margin-right:20px" type="primary" @click="() => this.searchResourcesTableData()">
             查询
           </a-button>
           <a-button @click="handleReset">重置</a-button>
         </div>
       </div>
-      <div class="roleTable">
-        <div class="roleTableAdd">
-          <div class="roleTableAddTitle">角色列表</div>
-          <div class="roleTableAddButton">
+      <div class="resourcesTable">
+        <div class="resourcesTableAdd">
+          <div class="resourcesTableAddTitle">资源列表</div>
+          <div class="resourcesTableAddButton">
             <a-button type="primary" @click="() => (this.modleVisible = true)">
-              新增角色
+              新增资源
             </a-button>
           </div>
         </div>
-        <div class="roleTableContent">
+        <div class="resourcesTableContent">
           <a-table
             :columns="columns"
-            :data-source="roleTableData"
+            :data-source="resourcesTableData"
             :pagination="false"
             size="middle"
             :rowKey="
@@ -70,13 +74,13 @@
           </a-table>
         </div>
       </div>
-      <div class="rolePagination">
+      <div class="resourcesPagination">
         <a-pagination
           v-model="currentPage"
           show-quick-jumper
           :page-size-options="pageSizeOptions"
-          :show-total="total => `共 ${roleTableTotal} 条`"
-          :total="roleTableTotal"
+          :total="resourcesTableTotal"
+          :show-total="total => `共 ${resourcesTableTotal} 条`"
           show-size-changer
           :page-size="pageObject.pageSize"
           @change="handlePageNumberChange"
@@ -85,9 +89,9 @@
         </a-pagination>
       </div>
       <a-modal
-        width="45%"
+        width="50%"
         v-model="modleVisible"
-        :title="form.id ? '编辑角色' : '新增角色'"
+        :title="form.id ? '编辑资源' : '新增资源'"
         @cancel="() => (this.clearFormData(), (this.modleVisible = false))"
         :confirm-loading="formButtonDisableFlag"
         @ok="onSubmit"
@@ -100,45 +104,49 @@
             <div class="modalContentFormTitle">基础信息</div>
             <div class="modalContentFormContent">
               <a-form-model
-                ref="roleRuleForm"
+                ref="resourcesRuleForm"
                 :model="form"
                 :rules="rules"
                 :label-col="labelCol"
                 :wrapper-col="wrapperCol"
               >
-                <a-form-model-item ref="name" label="角色名称" prop="name">
-                  <a-input v-model="form.name" placeholder="请输入角色名称" />
-                </a-form-model-item>
-                <a-form-model-item ref="code" label="角色代码" prop="code">
-                  <a-input v-model="form.code" placeholder="请输入角色代码" />
-                </a-form-model-item>
-                <a-form-model-item ref="applicationId" label="应用名称" prop="applicationId">
-                  <a-select @change="changeApplicationId" allowClear v-model="form.applicationId" size="default" placeholder="请选择应用名称">
-                    <a-select-option v-for="item in applicationArray" :key="item.id">
+                <a-form-model-item ref="type" label="资源类型" prop="type">
+                  <a-select v-model="form.type" placeholder="请选择资源类型">
+                    <a-select-option v-for="item in resourcesTypeArray" :key="item.id">
                       {{ item.name }}
                     </a-select-option>
                   </a-select>
                 </a-form-model-item>
-                <a-form-model-item label="备注">
-                  <a-input v-model="form.description" type="textarea" placeholder="请输入备注" />
+                <a-form-model-item ref="name" label="资源名称" prop="name">
+                  <a-input v-model="form.name" placeholder="请输入资源名称" />
+                </a-form-model-item>
+                <a-form-model-item ref="code" label="资源代码" prop="code">
+                  <a-input v-model="form.code" placeholder="请输入资源代码" />
+                </a-form-model-item>
+                <a-form-model-item ref="url" label="服务地址" prop="url">
+                  <a-input v-model="form.url" placeholder="请输入服务地址" />
                 </a-form-model-item>
               </a-form-model>
             </div>
           </div>
           <div class="modalContentTree">
             <div class="modalContentTreeTitle">
-              <div class="title">菜单分配</div>
+              <div class="title">接口分配</div>
               <div class="icon">
                 <span>
                   <a-popover placement="bottomRight">
                     <template slot="content">
-                      <p style="cursor: pointer;" @click="() => (this.checkedKeys = this.permissionsAllids)">选择全部</p>
+                      <p style="cursor: pointer;" @click="() => (this.checkedKeys = this.interfacesAllids)">
+                        选择全部
+                      </p>
                       <p style="cursor: pointer;" @click="() => (this.checkedKeys = [])">取消选择</p>
-                      <p style="cursor: pointer;" @click="() => (this.expandedKeys = this.permissionsAllids)">展开全部</p>
+                      <p style="cursor: pointer;" @click="() => (this.expandedKeys = this.interfacesAllids)">
+                        展开全部
+                      </p>
                       <span style="cursor: pointer;" @click="() => (this.expandedKeys = [])">折叠全部</span>
                     </template>
                     <a-icon type="menu-unfold" /> </a-popover
-                ></span>
+                  ></span>
               </div>
             </div>
             <div class="modalContentTreeContent">
@@ -147,11 +155,10 @@
                   title: 'name',
                   key: 'id'
                 }"
-                @check="getHalfCheck"
                 v-model="checkedKeys"
                 checkable
                 :expanded-keys.sync="expandedKeys"
-                :tree-data="permissionsTreeArray"
+                :tree-data="interfacesTreeArray"
               />
             </div>
           </div>
@@ -162,106 +169,110 @@
 </template>
 <script>
 import {
-  listPermissionsTree,
-  listRoles,
-  createRole,
-  updateRole,
-  loadRoleById,
-  deleteRoleById,
-  disableRoleById,
-  enableRoleById,
-  listAllApplications
+  listResources,
+  createResource,
+  updateResource,
+  deleteResourceById,
+  apiTree,
+  loadResourceById
 } from '@/api/api';
 import moment from 'moment';
 const columns = [
   {
-    title: '角色名称',
+    title: '权限名称',
     dataIndex: 'name',
-    width: '20%',
+    width: '16.6%',
     ellipsis: true
   },
   {
-    title: '角色代码',
+    title: '权限代码',
     dataIndex: 'code',
-    width: '20%',
+    width: '16.6%',
+    ellipsis: true
+  },
+  {
+    title: '权限类型',
+    dataIndex: 'typeName',
+    width: '16.6%',
+    ellipsis: true
+  },
+  {
+    title: '服务地址',
+    dataIndex: 'url',
+    width: '16.6%',
     ellipsis: true
   },
   {
     title: '创建时间',
     dataIndex: 'createTime',
-    width: '20%',
-    ellipsis: true
-  },
-  {
-    title: '备注',
-    dataIndex: 'description',
-    width: '20%',
+    width: '16.6%',
     ellipsis: true
   },
   {
     title: '操作',
     scopedSlots: { customRender: 'action' },
-    width: '20%',
+    width: '16.6%',
     ellipsis: true
   }
 ];
 export default {
-  name: 'Role',
+  name: 'Resources',
   data() {
     return {
-      formButtonDisableFlag: false, // 表单确定禁用按钮 防止多次点击多次保存
       editWaitFormLoading: false, // 加载编辑回显数据等待Loading
-      roleLoading: false, // 加载表格的loading
+      formButtonDisableFlag: false, // 表单确定禁用按钮 防止多次点击多次保存
+      resourcesLoading: false, // 加载表格的loading
       searchParameters: {}, // 表格搜索条件值
       modleVisible: false, // 控制弹框
       columns, // 表格头部
-      roleTableData: [], // 表格数据
+      resourcesTableData: [], // 表格数据
       pageSizeOptions: this.$store.state.user.defaultPaginationOptions, // 分页下拉
       currentPage: 1, // 默认分页当前页
       pageObject: {
         pageNumber: 0,
         pageSize: this.$store.state.user.defaultPaginationPagesize // 一页展示多少条数据
       },
-      roleTableTotal: 0, // 表格数据总数
+      resourcesTableTotal: 0, // 表格数据总数
       labelCol: { span: 4 },
       wrapperCol: { span: 14 },
       form: {
         // 表单数据
-        name: undefined, // 名字
-        code: undefined, // 角色
-        isEnable: '1', // 状态
-        isSystem: '0',
-        description: undefined,
-        permissions: [],
-        applicationId: undefined
+        type: undefined,
+        code: undefined,
+        name: undefined,
+        url: undefined,
+        apis: [],
+        isSystem: '1',
+        sortIndex: 9010,
+        isEnable: '1'
       },
       rules: {
         // 规则验证
-        name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-        code: [{ required: true, message: '请输入角色值', trigger: 'change' }],
-        applicationId: [{ required: true, message: '请选择应用名称', trigger: 'change' }]
+        type: [{ required: true, message: '请输入资源类型', trigger: 'change' }],
+        code: [{ required: true, message: '请输入资源代码', trigger: 'blur' }],
+        name: [{ required: true, message: '请输入资源名称', trigger: 'blur' }],
+        url: [{ required: true, message: '请输入服务地址', trigger: 'blur' }]
       },
-      halfCheckArray: [],
-      permissionsTreeArray: [], // 表单的树形下拉数据
+      resourcesTypeArray: [], // 资源类型数组数据
+      interfacesTreeArray: [], // 表单接口的树形下拉数据
       expandedKeys: [], // 控制树形下拉 展开收起全选取消全选 功能
       checkedKeys: [], // 树形下拉选中的数据
-      permissionsAllids: [], // 获取所有的权限ID
-      applicationArray: [] // 应用下拉数组数据
+      interfacesAllids: [] // 获取所有的接口ID
     };
   },
   watch: {
     /**
      * @description: 解决删除分页最后一条没数据的BUG
-     * 思路：先获取当前的表格数据总数this.roleTableTotal
+     * 思路：先获取当前的表格数据总数this.resourcesTableTotal
      * 在获取除了当前页数据外的表格总数this.getExceptCurrentPageTableTotalData
      * 如果这两个数相等 说明删除的是当前页最后一条数据 然后使当前页-1 请求数据就可以了
      */
 
-    roleTableTotal() {
-      if (this.roleTableTotal === this.getExceptCurrentPageTableTotalData && this.roleTableTotal !== 0) {
+    resourcesTableTotal() {
+      if (this.resourcesTableTotal === this.getExceptCurrentPageTableTotalData && this.resourcesTableTotal !== 0) {
         this.currentPage -= 1;
-        this.pageObject.pageNumber = Number(this.currentPage) - 1;
-        this.getRoleTableData(this.pageObject, this.searchParameters);
+         this.pageObject.pageNumber = Number(this.currentPage) - 1;
+        this.getResourcesTableData(this.pageObject, this.searchParameters);
       }
     }
   },
@@ -274,40 +285,32 @@ export default {
     }
   },
   created() {
-    this.getRoleTableData(this.pageObject, this.searchParameters); // 获取表格数据
-    this.getApplication(); // 获取应用ID
+    this.resourcesTypeArray = [{ name: 'Spring Cloud资源', id: 1 }, { name: 'HTTP资源', id: 0 }]; // 获取权限类型
+    this.getResourcesTableData(this.pageObject, this.searchParameters); // 获取表格数据
+    this.getInterfacesTree(); // 表单的接口权限树
   },
   methods: {
     /**
-     * @description: 获取角色权限
-     * @param {string} applicationId 选中ID
+     * @description: 获取接口树
      */
-    getRolePermissions(applicationId) {
-      listPermissionsTree({ searchApplicationId: applicationId }).then(res => {
-        if (res.code === 200 && res.data) {
-          this.permissionsTreeArray = res.data;
-          this.getTreeData(this.permissionsTreeArray);
-        } else {
-          this.permissionsTreeArray = [];
+    getInterfacesTree() {
+      apiTree().then(res => {
+        if (res.code === 200) {
+          this.interfacesTreeArray = res.data;
+          this.getTreeData(this.interfacesTreeArray);
         }
-      }).finally(() => {
-        this.editWaitFormLoading = false;
       });
     },
-
-   /**
-     * @description: 获取选中应用ID
-     * @param {string} applicationId 选中ID
+    /**
+     * @description: 利用递归获取到所有的节点id
+     * @param {array} interfacesTreeArray 树形下拉的数据
      */
-    changeApplicationId(applicationId) {
-      this.getRolePermissions(applicationId); // 获取角色权限
-    },
-        /**
-     * @description: 获取应用数据
-     */
-    getApplication() {
-      listAllApplications().then(res => {
-        this.applicationArray = res.data;
+    getTreeData(interfacesTreeArray) {
+      interfacesTreeArray.forEach(item => {
+        this.interfacesAllids.push(item.id);
+        if (item.children) {
+          this.getTreeData(item.children);
+        }
       });
     },
     /**
@@ -315,68 +318,62 @@ export default {
      * @param {object} page 分页参数
      * @param {object} params 搜索参数
      */
-    getRoleTableData(page, params) {
-      this.roleLoading = true;
-      listRoles(Object.assign({}, page, params)).then(res => {
-        if (res.code === 200 && res.data.content) {
-          this.roleTableData = res.data.content;
-          this.roleTableData.forEach(item => {
-            item.createTime = moment(item.createTime).format('YYYY-MM-DD HH:mm');
-          });
-          this.roleTableTotal = res.data.totalElements;
-        } else {
-          this.roleTableTotal = res.data.totalElements;
-          this.roleTableData = [];
-        }
-      }).finally(() => {
-        this.roleLoading = false;
-      });
-    },
+    getResourcesTableData(page, params) {
+      this.resourcesLoading = true;
+      listResources(Object.assign({}, page, params))
+        .then(res => {
+          if (res.code === 200 && res.data.content) {
+            this.resourcesTableData = res.data.content;
+            this.resourcesTableData.forEach(res => {
+              res.createTime = moment(res.createTime).format('YYYY-MM-DD HH:mm');
+                this.resourcesTypeArray.forEach(item => {
+                    if (item.id === res.type) {
+                    res.typeName = item.name;
+                    }
+                });
+            });
 
-    /**
-     * @description: 获取半选状态的数组
-     * @param {*} checkedKeys
-     * @param {object} event event对象
-     * @return {*}
-     */
-    getHalfCheck(checkedKeys, event) {
-      this.halfCheckArray = event.halfCheckedKeys.map(item => {
-        return { id: item, isHalfCheck: 1 };
-      });
+            this.resourcesTableTotal = res.data.totalElements;
+          } else {
+            this.resourcesTableTotal = res.data.totalElements;
+            this.resourcesTableData = [];
+          }
+        })
+        .finally(() => {
+          this.resourcesLoading = false;
+        });
     },
 
     /**
      * @description: 点击表格搜索条件的查询
      */
-    searchRoleTableData() {
+    searchResourcesTableData() {
       this.currentPage = 1;
       this.pageObject.pageNumber = 0;
-      this.getRoleTableData(this.pageObject, this.searchParameters);
+      this.getResourcesTableData(this.pageObject, this.searchParameters);
     },
 
     /**
-     * @description: 新增编辑角色表单提交
+     * @description: 新增编辑权限表单提交
      */
     onSubmit() {
-      this.$refs.roleRuleForm.validate(valid => {
+      this.$refs.resourcesRuleForm.validate(valid => {
         if (valid) {
-          this.form.permissions = this.checkedKeys.map(item => {
+          this.form.apis = this.checkedKeys.map(item => {
             return {
               id: item
             };
           });
-          this.form.permissions = this.form.permissions.concat(this.halfCheckArray);
-          this.form.application = { id: this.form.applicationId };
-          // 判断是否至少选择了一个权限
-          if (this.form.permissions.length === 0) {
-            this.$message.error('请选择权限列表');
+          // 判断是否至少选择了一个接口
+          if (this.form.apis.length === 0) {
+            this.$message.error('请选择接口列表');
             return false;
           }
           this.formButtonDisableFlag = true;
           if (this.form.id) {
-            this.editRole(this.form);
+            this.editResources(this.form);
           } else {
-            this.roleAdd(this.form);
+            this.addResources(this.form);
           }
         } else {
           return false;
@@ -385,13 +382,13 @@ export default {
     },
 
     /**
-     * @description: 新增角色权限
-     * @param {object} addRoleParam 表单参数
+     * @description: 新增权限
+     * @param {object} addPermission 表单参数
      */
-    roleAdd(addRoleParam) {
-      createRole({ body: addRoleParam })
+    addResources(addPermission) {
+      createResource({ body: addPermission })
         .then(res => {
-          if (res.code === 200) {
+          if (res.code === 201) {
             this.formSuccessOperation(res);
           }
         })
@@ -401,11 +398,11 @@ export default {
     },
 
     /**
-     * @description: 编辑角色权限
-     * @param {object} editRoleParam 表单参数
+     * @description: 编辑权限
+     * @param {object} editPermission 表单参数
      */
-    editRole(editRoleParam) {
-      updateRole({ body: editRoleParam, id: editRoleParam.id })
+    editResources(editPermission) {
+      updateResource({ body: editPermission, id: editPermission.id })
         .then(res => {
           if (res.code === 200) {
             this.formSuccessOperation(res);
@@ -424,38 +421,38 @@ export default {
       this.$message.success(successFormData.message);
       this.modleVisible = false;
       this.clearFormData();
-      this.getRoleTableData(this.pageObject, this.searchParameters);
+      this.getResourcesTableData(this.pageObject, this.searchParameters);
     },
 
     /**
      * @description: 重置表单
      */
     clearFormData() {
-      this.$refs.roleRuleForm.resetFields();
+      this.$refs.resourcesRuleForm.resetFields();
       this.form = this.$options.data.call(this).form;
       this.checkedKeys = [];
-      this.permissionsTreeArray = [];
     },
 
     /**
-     * @description: 编辑角色
-     * @param {object} roleTableRowData 表格某一行的数据对象
+     * @description: 编辑权限
+     * @param {object} permissionTableRowData 表格某一行的数据对象
      */
-    handleEdit(roleTableRowData) {
+    handleEdit(permissionTableRowData) {
       this.editWaitFormLoading = true;
       this.modleVisible = true;
-      // 根据ID请求相应角色的权限 进行回显
-      loadRoleById({ id: roleTableRowData.id })
+
+      loadResourceById({ id: permissionTableRowData.id })
         .then(res => {
           if (res.code === 200) {
             this.form = Object.assign({}, this.form, res.data);
             this.form.isEnable = String(this.form.isEnable);
-            this.form.applicationId = this.form.application.id;
-            this.checkedKeys = res.data.permissions.map(item => {
-              return item.id;
-            });
-          this.getRolePermissions(this.form.applicationId); // 获取角色权限
+            // this.checkedKeys = res.data.apis.map(item => {
+            //   return item.id;
+            // });
           }
+        })
+        .finally(() => {
+          this.editWaitFormLoading = false;
         });
     },
 
@@ -464,37 +461,33 @@ export default {
      * @param {object} roleTableRowData 格某一行的数据对象
      */
     handleDelete(roleTableRowData) {
-      deleteRoleById({ id: roleTableRowData.id }).then(res => {
+      deleteResourceById({ id: roleTableRowData.id }).then(res => {
         if (res.code === 200) {
           this.$message.success(res.message);
-          this.getRoleTableData(this.pageObject, this.searchParameters);
-        }
-      });
-    },
-
-    /**
-     * @description: 利用递归获取到所有的节点id
-     * @param {array} permissionsTreeArray 树形下拉的数据
-     */
-    getTreeData(permissionsTreeArray) {
-      permissionsTreeArray.forEach(item => {
-        this.permissionsAllids.push(item.id);
-        if (item.children) {
-          this.getTreeData(item.children);
+          this.getResourcesTableData(this.pageObject, this.searchParameters);
         }
       });
     },
 
     /**
      * @description:  获取分页下拉第几页展示几个
-     * @param {string} currentPage 当前页
+     * @param {string} current 当前页
      * @param {string} pageSize 当前页展示几条
      */
-    onPageSizeChange(currentPage, pageSize) {
-      this.currentPage = currentPage;
+    onPageSizeChange(current, pageSize) {
+      this.currentPage = current;
       this.pageObject.pageSize = pageSize;
       this.pageObject.pageNumber = Number(this.currentPage) - 1;
-      this.getRoleTableData(this.pageObject, this.searchParameters);
+      this.getResourcesTableData(this.pageObject, this.searchParameters);
+    },
+        /**
+     * @description: 日期选择器改变
+     * @param {array} date UI框架自带
+     * @param {array} dateString UI框架自带 时间区间
+     */
+    onChangeData(date, dateString) {
+      this.searchParameters.searchCreateDateBegin = dateString[0];
+      this.searchParameters.searchCreateDateEnd = dateString[1];
     },
 
     /**
@@ -504,47 +497,14 @@ export default {
     handlePageNumberChange(pageNumber) {
       this.currentPage = pageNumber;
       this.pageObject.pageNumber = Number(this.currentPage) - 1;
-      this.getRoleTableData(this.pageObject, this.searchParameters);
+      this.getResourcesTableData(this.pageObject, this.searchParameters);
     },
-
-    /**
-     * @description: 日期选择器改变
-     * @param {array} date UI框架自带
-     * @param {array} dateString UI框架自带 时间区间
-     */
-    onChangeData(date, dateString) {
-      this.searchParameters.searchCreateDateBegin = dateString[0];
-      this.searchParameters.searchCreateDateEnd = dateString[1];
-    },
-    /**
-     * @description: 停用/启用表格数据的某一条
-     * @param {object} roleTableRowData 某一条表格数据对象
-     */
-    handleIsEnable(roleTableRowData) {
-      if (roleTableRowData.isEnable === 1) {
-        disableRoleById({ id: roleTableRowData.id }).then(res => {
-          if (res.code === 200) {
-            this.$message.success('停用成功');
-            this.modleVisible = false;
-            this.getRoleTableData(this.pageObject, this.searchParameters);
-          }
-        });
-      } else {
-        enableRoleById({ id: roleTableRowData.id }).then(res => {
-          if (res.code === 200) {
-            this.$message.success('启用成功');
-            this.modleVisible = false;
-            this.getRoleTableData(this.pageObject, this.searchParameters);
-          }
-        });
-      }
-    },
-    /**
+        /**
      * @description: 重置搜索条件
      */
     handleReset() {
       this.searchParameters = {};
-      this.searchRoleTableData();
+      this.searchResourcesTableData();
     }
   }
 };
@@ -556,7 +516,7 @@ export default {
   padding-right: 8px;
   width: 77px;
 }
-.Role {
+.resources {
   width: 100%;
   height: calc(100vh - 150px);
   border-radius: 5px;
@@ -573,39 +533,39 @@ export default {
     justify-content: center;
     z-index: 999;
   }
-  .roleSearch {
+  .resourcesSearch {
     width: 100%;
     height: 64px;
     background: white;
     border-radius: 5px;
     margin-bottom: 10px;
-    display: flex;
     padding: 15px 20px;
-    .roleSearchInput {
+    display: flex;
+    .resourcesSearchInput {
       width: 85%;
       height: 100%;
     }
-    .roleSearchButton {
+    .resourcesSearchButton {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: flex-end;
     }
   }
-  .roleTable {
+  .resourcesTable {
     flex: 1;
     background: white;
     border-radius: 5px;
     display: flex;
     flex-direction: column;
-    .roleTableAdd {
+    .resourcesTableAdd {
       width: 100%;
       height: 64px;
       display: flex;
       align-items: center;
       border-bottom: 1px solid #ececec;
       padding: 0 20px;
-      .roleTableAddTitle {
+      .resourcesTableAddTitle {
         width: 80%;
         height: 100%;
         display: flex;
@@ -613,14 +573,14 @@ export default {
         font-size: 18px;
         font-weight: 550;
       }
-      .roleTableAddButton {
+      .resourcesTableAddButton {
         flex: 1;
         display: flex;
         align-items: center;
         justify-content: flex-end;
       }
     }
-    .roleTableContent {
+    .resourcesTableContent {
       max-height: calc(100vh - 380px);
       padding: 10px;
       overflow: scroll;
@@ -635,14 +595,14 @@ export default {
         z-index: 999;
       }
     }
-    .roleTableContent /deep/ .ant-table-tbody .ant-table-row:nth-child(2n) {
+    .resourcesTableContent /deep/ .ant-table-tbody .ant-table-row:nth-child(2n) {
       background: #fafafa;
     }
-    .roleTableContent::-webkit-scrollbar {
+    .resourcesTableContent::-webkit-scrollbar {
       display: none;
     }
   }
-  .rolePagination {
+  .resourcesPagination {
     width: 100%;
     height: 47px;
     border-radius: 5px;
@@ -696,6 +656,7 @@ export default {
       text-align: right;
       vertical-align: middle;
       width: 100px;
+      overflow:hidden;
     }
   }
   .modalContentTree {
